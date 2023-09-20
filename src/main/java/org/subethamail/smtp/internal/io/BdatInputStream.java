@@ -15,14 +15,12 @@ public final class BdatInputStream extends InputStream {
     private final InputStream in;
     private final Session session;
 
-    
     // mutable fields
     private final CRLFTerminatedReader reader;
     private long remainingSize;
 
     private long size;
     private boolean isLast;
-    
 
     public BdatInputStream(InputStream in, Session session, long size, boolean isLast) {
         this.in = in;
@@ -62,6 +60,32 @@ public final class BdatInputStream extends InputStream {
                     session.sendResponse(message);
                     throw new IOException(message);
                 }
+            }
+        }
+    }
+
+    @Override
+    public int read(byte[] b, int off, int len) throws IOException {
+        if (remainingSize > 0) {
+            int remainingInt = Integer.MAX_VALUE;
+            if (remainingSize < Integer.MAX_VALUE) {
+                remainingInt = (int) remainingSize;
+            }
+            int maxRead = Math.min(remainingInt, len);
+            int read = in.read(b, off, maxRead);
+            remainingSize -= read;
+            return read;
+        } else if (isLast)
+            return -1;
+        else if (len == 0)
+            return 0;
+        else {
+            int nextByte = read();
+            if (nextByte == -1) {
+                return -1;
+            } else {
+                b[off] = (byte) nextByte;
+                return 1;
             }
         }
     }
